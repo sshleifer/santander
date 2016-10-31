@@ -5,35 +5,7 @@ import os
 from collections import defaultdict
 import operator
 
-product_names = [
-    'ind_ahor_fin_ult1',
-    'ind_aval_fin_ult1',
-    'ind_cco_fin_ult1',
-    'ind_cder_fin_ult1',
-    'ind_cno_fin_ult1',
-    'ind_ctju_fin_ult1',
-    'ind_ctma_fin_ult1',
-    'ind_ctop_fin_ult1',
-    'ind_ctpp_fin_ult1',
-    'ind_deco_fin_ult1',
-    'ind_deme_fin_ult1',
-    'ind_dela_fin_ult1',
-    'ind_ecue_fin_ult1',
-    'ind_fond_fin_ult1',
-    'ind_hip_fin_ult1',
-    'ind_plan_fin_ult1',
-    'ind_pres_fin_ult1',
-    'ind_reca_fin_ult1',
-    'ind_tjcr_fin_ult1',
-    'ind_valo_fin_ult1',
-    'ind_viv_fin_ult1',
-    'ind_nomina_ult1',
-    'ind_nom_pens_ult1',
-    'ind_recibo_ult1'
-]
-
-TRAIN_PATH = '/Users/shleifer/flow/santander/inputs/train_ver2.csv'
-TEST_PATH = '/Users/shleifer/flow/santander/inputs/test_ver2.csv'
+from scripts.constants import TRAIN_PATH, TEST_PATH, product_names, hash_cols
 
 
 def apk(actual, predicted, k=7):
@@ -54,8 +26,8 @@ def apk(actual, predicted, k=7):
     return score / min(len(actual), k)
 
 
-def reverse_sort(overallbest):
-    return sorted(overallbest.items(), key=operator.itemgetter(1), reverse=True)
+def reverse_sort(product_counts):
+    return sorted(product_counts.items(), key=operator.itemgetter(1), reverse=True)
 
 
 def get_hash(arr, type = 0):
@@ -76,31 +48,33 @@ def get_hash(arr, type = 0):
 
 class HashFilter(object):
 
+    last_date = '2016-05-28'
+
     def __init__(self, train_path=TRAIN_PATH, test_path=TEST_PATH):
         print('Preparing arrays...')
         self.customers = dict()  # customerss we've seen
-        self.best = defaultdict(lambda: defaultdict(int))
-        self.overallbest = defaultdict(int)
+        self.hash_to_product = defaultdict(lambda: defaultdict(int))
+        self.product_counts = defaultdict(int)
 
         # Validation variables
         self.customers_valid = dict()
-        self.best_valid = defaultdict(lambda: defaultdict(int))
-        self.overallbest_valid = defaultdict(int)
-        self.valid_part = []
+        self.hash_to_product_valid = defaultdict(lambda: defaultdict(int))
+        self.product_counts_valid = defaultdict(int)
+        self.validation_set = []
 
         self.map7 = 0.0
 
         with open(train_path) as f:
-            self.read_and_set(f)
+            self.train(f)
         self.validation()
-        #self.generate_submission(test_path)
+        # self.generate_submission(test_path)
 
-    def read_and_set(self, f):
-        total = 0
+    def train(self, f):
+        n_lines = 0
         f.readline()
         while 1:
             line = f.readline()[:-1]
-            total += 1
+            n_lines += 1
 
             if line == '':
                 break
@@ -119,53 +93,52 @@ class HashFilter(object):
                 if part[i] == '1':
                     if client in self.customers:
                         if self.customers[client][i] == '0':
-                            self.best[hash][i] += 1
-                            self.overallbest[i] += 1
+                            self.hash_to_product[hash][i] += 1
+                            self.product_counts[i] += 1
                     else:
-                        self.best[hash][i] += 1
-                        self.overallbest[i] += 1
+                        self.hash_to_product[hash][i] += 1
+                        self.product_counts[i] += 1
             self.customers[client] = part
 
             # Validation part
-            if arr[0] != '2016-05-28':
+            if arr[0] == self.last_date:
+                self.validation_set.append(arr)
+            else:
                 for i in range(24):
                     if part[i] == '1':
                         if client in self.customers_valid:
                             if self.customers_valid[client][i] == '0':
-                                self.best_valid[hash][i] += 1
-                                self.overallbest_valid[i] += 1
+                                self.hash_to_product_valid[hash][i] += 1
+                                self.product_counts_valid[i] += 1
                         else:
-                            self.best_valid[hash][i] += 1
-                            self.overallbest_valid[i] += 1
+                            self.hash_to_product_valid[hash][i] += 1
+                            self.product_counts_valid[i] += 1
                 self.customers_valid[client] = part
-            else:
-                self.valid_part.append(arr)
 
-            if total % 1000000 == 0:
-                print('Process {} lines ...'.format(total))
+            if n_lines % 1000000 == 0:
+                print('Process {} lines ...'.format(n_lines))
                 # break
         print('Sort best arrays...')
-        print('Hashes num: ', len(self.best))
-        print('Valid part: ', len(self.valid_part))
+        print('Hashes num: ', len(self.hash_to_product))
+        print('Valid part: ', len(self.validation_set))
 
-        self.best = {b: reverse_sort(self.best[b]) for b,v in self.best.items()}
-        self.overallbest = reverse_sort(self.overallbest)
+        self.hash_to_product = {b: reverse_sort(self.hash_to_product[b]) for b, v in self.hash_to_product.items()}
+        self.product_counts = reverse_sort(self.product_counts)
 
         # Valid
-        print(self.best_valid)
-        self.best_valid = {b: reverse_sort(self.best_valid[b]) for b in self.best_valid}
-        self.overallbest_valid = reverse_sort(self.overallbest_valid)
-
+        print(self.hash_to_product_valid)
+        self.hash_to_product_valid = {b: reverse_sort(self.hash_to_product_valid[b]) for b in self.hash_to_product_valid}
+        self.product_counts_valid = reverse_sort(self.product_counts_valid)
 
     def validation(self):
-        for arr1 in self.valid_part:
+        for arr1 in self.validation_set:
             client = arr1[1]
             hash = get_hash(arr1)
 
-            if hash in self.best_valid:
-                product_array = self.best_valid[hash]
+            if hash in self.hash_to_product_valid:
+                product_array = self.hash_to_product_valid[hash]
             else:
-                product_array = self.overallbest_valid
+                product_array = self.product_counts_valid
 
             predicted = []
             for a in product_array:
@@ -178,7 +151,7 @@ class HashFilter(object):
                         break
 
             if len(predicted) < 7:
-                for a in self.overallbest_valid:
+                for a in self.product_counts_valid:
                     # If user is not new
                     if client in self.customers_valid:
                         if self.customers_valid[client][a[0]] == '1':
@@ -199,13 +172,10 @@ class HashFilter(object):
                             real.append(i)
                     else:
                         real.append(i)
-
-
             self.map7 += apk(real, predicted)
 
-        self.map7 /= max(len(self.valid_part), 1)
+        self.map7 /= max(len(self.validation_set), 1)
         print('Predicted score: {}'.format(self.map7))
-
 
     def generate_submission(self, test_path=None):
         test_path = test_path or self.test_path
@@ -214,13 +184,13 @@ class HashFilter(object):
         out = open(sub_file, "w")
         f = open(test_path)
         f.readline()
-        total = 0
+        n_lines = 0
         count_empty = 0
         out.write("client,added_products\n")
 
         while 1:
             line = f.readline()[:-1]
-            total += 1
+            n_lines += 1
 
             if line == '':
                 break
@@ -233,10 +203,10 @@ class HashFilter(object):
 
             out.write(client + ',')
             # If class exists output for class
-            if hash in self.best:
-                arr = self.best[hash]
+            if hash in self.hash_to_product:
+                arr = self.hash_to_product[hash]
             else:
-                arr = self.overallbest
+                arr = self.product_counts
                 count_empty += 1
 
             predicted = []
@@ -250,7 +220,7 @@ class HashFilter(object):
                     if len(predicted) == 7:
                         break
             if len(predicted) < 7:
-                for a in self.overallbest:
+                for a in self.product_counts:
                     # If user is not new
                     if client in self.customers:
                         if self.customers[client][a[0]] == '1':
@@ -263,13 +233,13 @@ class HashFilter(object):
             for p in predicted:
                 out.write(product_names[p] + ' ')
 
-            if total % 1000000 == 0:
-                print('Read {} lines ...'.format(total))
+            if n_lines % 1000000 == 0:
+                print('Read {} lines ...'.format(n_lines))
                 # break
 
         out.write("\n")
 
-        print('Total cases:', str(total))
+        print('Total cases:', str(n_lines))
         print('Empty cases:', str(count_empty))
         out.close()
         f.close()
