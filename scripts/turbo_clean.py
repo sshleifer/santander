@@ -93,12 +93,12 @@ class HashFilter(object):
         with open(train_path) as f:
             self.read_and_set(f)
         self.validation()
-        self.generate_submission(test_path)
+        #self.generate_submission(test_path)
 
     def read_and_set(self, f):
         total = 0
         f.readline()
-        while total < 200:
+        while 1:
             line = f.readline()[:-1]
             total += 1
 
@@ -148,12 +148,12 @@ class HashFilter(object):
         print('Hashes num: ', len(self.best))
         print('Valid part: ', len(self.valid_part))
 
-        self.best = {b: reverse_sort(v) for b,v in self.best.items()}
+        self.best = {b: reverse_sort(self.best[b]) for b,v in self.best.items()}
         self.overallbest = reverse_sort(self.overallbest)
 
         # Valid
         print(self.best_valid)
-        self.best_valid = {b: reverse_sort(self.best[b]) for b in self.best_valid}
+        self.best_valid = {b: reverse_sort(self.best_valid[b]) for b in self.best_valid}
         self.overallbest_valid = reverse_sort(self.overallbest_valid)
 
 
@@ -207,11 +207,12 @@ class HashFilter(object):
         print('Predicted score: {}'.format(self.map7))
 
 
-    def generate_submission(self):
+    def generate_submission(self, test_path=None):
+        test_path = test_path or self.test_path
         print('Generate submission...')
-        sub_file = os.path.join('submission_' + str(map7) + '_' + str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")) + '.csv')
+        sub_file = os.path.join('submission_' + str(self.map7) + '_' + str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")) + '.csv')
         out = open(sub_file, "w")
-        f = open(TEST_PATH)
+        f = open(test_path)
         f.readline()
         total = 0
         count_empty = 0
@@ -251,7 +252,7 @@ class HashFilter(object):
             if len(predicted) < 7:
                 for a in self.overallbest:
                     # If user is not new
-                    if client in customers:
+                    if client in self.customers:
                         if self.customers[client][a[0]] == '1':
                             continue
                     if a[0] not in predicted:
