@@ -46,6 +46,7 @@ def get_hash(arr, type = 0):
     else:
         return (sexo, age, segmento)
 
+
 class HashFilter(object):
 
     last_date = '2016-05-28'
