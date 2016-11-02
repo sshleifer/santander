@@ -21,7 +21,8 @@ class TestHashFilter(unittest.TestCase):
         map7 = sf.score(preds, vset)
         self.assertEqual(map7,0)
         preds.to_csv('submissions/test.csv')
-        self.assertFalse(is_valid_submission('submissions/test.csv'))
+        with self.assertRaises(AssertionError):
+            is_valid_submission('submissions/test.csv')
 
 
     def test_that_hash_cols_are_fixed(self):
