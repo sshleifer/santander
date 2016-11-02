@@ -29,3 +29,4 @@ product_names = [
 
 TRAIN_PATH = '/Users/shleifer/flow/santander/inputs/train_ver2.csv'
 TEST_PATH = '/Users/shleifer/flow/santander/inputs/test_ver2.csv'
+SMALL_DATA_PATH = '/Users/shleifer/flow/santander/inputs/small_data.csv'
