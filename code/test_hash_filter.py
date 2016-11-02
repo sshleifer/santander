@@ -1,5 +1,5 @@
 import unittest
-from scripts.turbo_clean import HashFilter
+from code.hash_filter import HashFilter
 
 
 class TestHashFilter(unittest.TestCase):

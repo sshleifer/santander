@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 import operator
 
-from scripts.constants import TRAIN_PATH, TEST_PATH, product_names, hash_cols
+from code.constants import TRAIN_PATH, TEST_PATH, product_names, hash_cols
 
 
 def apk(actual, predicted, k=7):
@@ -30,21 +30,17 @@ def reverse_sort(product_counts):
     return sorted(product_counts.items(), key=operator.itemgetter(1), reverse=True)
 
 
-def get_hash(arr, type = 0):
+def get_hash(arr):
     '''Tuple of demographic variables to use for group'''
-    (fecha_dato, client, ind_empleado,
-    pais_residencia, sexo, age,
-    fecha_alta, ind_nuevo, antiguedad,
-    indrel, ult_fec_cli_1t, indrel_1mes,
-    tiprel_1mes, indresi, indext,
-    conyuemp, canal_entrada, indfall,
-    tipodom, cod_prov, nomprov,
-    ind_actividad_cliente, renta, segmento) = arr[:24]
-
-    if type == 0:
-        return (pais_residencia, sexo, age, ind_nuevo, segmento, ind_empleado, ind_actividad_cliente, indresi)
-    else:
-        return (sexo, age, segmento)
+    (fecha_dato, client, ind_empleado, pais_residencia, sexo, age,
+        fecha_alta, ind_nuevo, antiguedad,
+        indrel, ult_fec_cli_1t, indrel_1mes,
+        tiprel_1mes, indresi, indext,
+        conyuemp, canal_entrada, indfall,
+        tipodom, cod_prov, nomprov,
+        ind_actividad_cliente, renta, segmento) = arr[:24]
+    return (pais_residencia, sexo, age, ind_nuevo, segmento,
+            ind_empleado, ind_actividad_cliente, indresi)
 
 
 class HashFilter(object):
