@@ -237,6 +237,43 @@ class HashFilter(object):
         out.close()
         f.close()
 
+
+def take_7(cluster_recs, overall_recs):
+    chosen = cluster_recs.index
+    need = 7 - len(chosen)
+    return chosen.append(overall_recs.drop(chosen).index[:need])
+
+
+class SamFilter(object):
+    '''Collaborative Filtering based on hash_cols'''
+    id_col = 'ncodpers'
+
+    def __init__(self, df_train, hash_cols=hash_cols):
+        '''Record customer usage, group usage, '''
+        self.customer_usage = df_train.groupby(self.id_col)[product_names].sum()
+        self.overall_usage = df_train[product_names].sum().sort_values(ascending=False)
+        cluster_usage = df_train.groupby(hash_cols)[product_names].sum()
+        self.cluster_usage = cluster_usage.apply(
+            lambda x: x.loc[lambda x: x > 0].sort_values(ascending=False), axis=1)
+
+    def _predict(self, row):
+        '''Find non-used products that were popular in the cluster'''
+        id, cluster_id = row[self.id_col], tuple(row[hash_cols].values)
+        used_products = pd.Index([])
+        cluster_recs = pd.Series()
+        if id in self.customer_usage.index:
+            used_products = self.customer_usage.loc[row[self.id_col]].loc[lambda x: x > 0].index
+        overall_recs = self.overall_usage.drop(used_products)
+        if cluster_id in self.cluster_usage:
+            cluster_recs = self.cluster_usage.loc[cluster_id].drop(used_products, errors='ignore')
+        return take_7(cluster_recs, overall_recs)
+
+    def predict_each_row(self, test_data):
+        '''Make a prediction for each row in test_data'''
+        return (pd.Series({k: ' '.join(self._predict(v)) for k, v in test_data.iterrows()})
+                .rename_axis('ncodpers').rename('added_products'))
+
+
 if __name__ == '__main__':
-    hf = HashFilter()
+    hf = SamFilter()
     hf.generate_submission()

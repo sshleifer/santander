@@ -1,4 +1,6 @@
+import pandas as pd
 import unittest
+
 from code.hash_filter import HashFilter, is_valid_submission, SamFilter
 from code.constants import SMALL_DATA_PATH
 
@@ -17,4 +19,3 @@ class TestHashFilter(unittest.TestCase):
         self.preds = sf.predict_each_row(df)
         self.preds.to_csv('submissions/test.csv')
         self.assertFalse(is_valid_submission('submissions/test.csv'))
-
