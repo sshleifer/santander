@@ -28,9 +28,9 @@ def apk(actual, predicted, k=7):
 
 def is_valid_submission(path):
     df = pd.read_csv(path)
-    df.columns.tolist() == ['ncodpers', 'added_products']
-    df.shape[0] == 929616
-
+    assert df.columns.tolist() == ['ncodpers', 'added_products']
+    assert df.shape[0] == 929615
+    return True
 
 def reverse_sort(product_counts):
     return sorted(product_counts.items(), key=operator.itemgetter(1), reverse=True)
@@ -268,7 +268,6 @@ class SamFilter(object):
     def _apk(self, preds, truth, id):
         pred_list = preds.split()
         used_products = self.customer_usage.loc[id].loc[lambda x: x > 0].index
-
         truth = truth.drop(used_products, errors='ignore')
         return apk(pred_list, truth.tolist())
 
