@@ -19,3 +19,9 @@ class TestHashFilter(unittest.TestCase):
         self.preds = sf.predict_each_row(df)
         self.preds.to_csv('submissions/test.csv')
         self.assertFalse(is_valid_submission('submissions/test.csv'))
+
+
+    def test_that_hash_cols_are_fixed(self):
+        # df=store['df_train']
+        # df.
+        pass

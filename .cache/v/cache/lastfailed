@@ -1,1 +1,3 @@
-{}
+{
+  "code/test_hash_filter.py::TestHashFilter::test_on_few_rows": true
+}

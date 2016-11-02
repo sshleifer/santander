@@ -261,7 +261,7 @@ class SamFilter(object):
 
     def predict_each_row(self, test_data):
         '''Make a prediction for each row in test_data'''
-        return (pd.Series({k: ' '.join(self._predict(v)) for k, v in test_data.iterrows()})
+        return (pd.Series({v[self.id_col]: ' '.join(self._predict(v)) for k, v in test_data.iterrows()})
                 .rename_axis('ncodpers').rename('added_products'))
 
     def score(preds):
