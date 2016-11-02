@@ -137,32 +137,7 @@ class HashFilter(object):
         for arr1 in self.validation_set:
             client = arr1[1]
             hash = get_hash(arr1)
-
-            if hash in self.hash_to_product_valid:
-                product_array = self.hash_to_product_valid[hash]
-            else:
-                product_array = self.product_counts_valid
-
-            predicted = []
-            for a in product_array:
-                if client in self.customers_valid:
-                    if self.customers_valid[client][a[0]] == '1':
-                        continue
-                if a[0] not in predicted:
-                    predicted.append(a[0])
-                    if len(predicted) == 7:
-                        break
-
-            if len(predicted) < 7:
-                for a in self.product_counts_valid:
-                    # If user is not new
-                    if client in self.customers_valid:
-                        if self.customers_valid[client][a[0]] == '1':
-                            continue
-                    if a[0] not in predicted:
-                        predicted.append(a[0])
-                        if len(predicted) == 7:
-                            break
+            predicted = self.predict_valid(hash, client)
 
             # Find real
             real = []
@@ -179,6 +154,20 @@ class HashFilter(object):
 
         self.map7 /= max(len(self.validation_set), 1)
         print('Predicted score: {}'.format(self.map7))
+
+    def predict_valid(self, hash, client):
+        '''Find 7 products from a users group that they havent used, if not enough in group use overall counts'''
+        product_recommendations = self.hash_to_product_valid.get(hash, []) + self.product_counts_valid
+        used_products = self.customers_valid.get(client, [])
+        predicted = []
+        for product, _ in product_recommendations:
+            if len(predicted) == 7:
+                return predicted
+            elif product in predicted or product in used_products:
+                continue
+            else:
+                predicted.append(product)
+        return predicted
 
     def predict(self, hash, client):
         '''Find 7 products from a users group that they havent used, if not enough in group use overall counts'''
@@ -252,27 +241,31 @@ class SamFilter(object):
         '''Record customer usage, group usage, '''
         self.customer_usage = df_train.groupby(self.id_col)[product_names].sum()
         self.overall_usage = df_train[product_names].sum().sort_values(ascending=False)
-        cluster_usage = df_train.groupby(hash_cols)[product_names].sum()
-        self.cluster_usage = cluster_usage.apply(
-            lambda x: x.loc[lambda x: x > 0].sort_values(ascending=False), axis=1)
+        self.cluster_usage = df_train.groupby(hash_cols)[product_names].sum()
+        clist = {}
+        for k, v in self.cluster_usage.iterrows():
+            recs = v[v > 0].sort_values(ascending=False).index
+            clist[k] = recs.append(self.overall_usage.index.drop(recs))
+        self.clist = clist
 
     def _predict(self, row):
         '''Find non-used products that were popular in the cluster'''
         id, cluster_id = row[self.id_col], tuple(row[hash_cols].values)
-        used_products = pd.Index([])
-        cluster_recs = pd.Series()
+        start = self.clist.get(cluster_id, self.overall_usage.index)
         if id in self.customer_usage.index:
             used_products = self.customer_usage.loc[row[self.id_col]].loc[lambda x: x > 0].index
-        overall_recs = self.overall_usage.drop(used_products)
-        if cluster_id in self.cluster_usage:
-            cluster_recs = self.cluster_usage.loc[cluster_id].drop(used_products, errors='ignore')
-        return take_7(cluster_recs, overall_recs)
+        else:
+            return start[:7]
+            used_products = pd.Index([])
+        return start.drop(used_products)[:7]
 
     def predict_each_row(self, test_data):
         '''Make a prediction for each row in test_data'''
         return (pd.Series({k: ' '.join(self._predict(v)) for k, v in test_data.iterrows()})
                 .rename_axis('ncodpers').rename('added_products'))
 
+    def score(preds):
+        return 0
 
 if __name__ == '__main__':
     hf = SamFilter()
