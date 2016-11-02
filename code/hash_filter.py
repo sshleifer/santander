@@ -1,6 +1,7 @@
 from __future__ import print_function
 import datetime
 from collections import defaultdict
+import numpy as np
 import operator
 import pandas as pd
 
@@ -264,8 +265,24 @@ class SamFilter(object):
         return (pd.Series({v[self.id_col]: ' '.join(self._predict(v)) for k, v in test_data.iterrows()})
                 .rename_axis('ncodpers').rename('added_products'))
 
-    def score(preds):
-        return 0
+    def _apk(self, preds, truth, id):
+        pred_list = preds.split()
+        used_products = self.customer_usage.loc[id].loc[lambda x: x > 0].index
+
+        truth = truth.drop(used_products, errors='ignore')
+        return apk(pred_list, truth.tolist())
+
+    def make_validation_set(self, df):
+        truth = (df.groupby('ncodpers')[product_names].sum())
+        return pd.Series({code: row[row > 0].index for code, row in truth.iterrows()})
+
+    def score(self, pred_df, truth_df):
+        map7 = 0
+        jnd = pred_df.to_frame(name='added_products').join(truth_df).dropna()
+        for i, v in jnd.iterrows():
+            map7 += self._apk(v['added_products'], v['truth'], i)
+        map7 /= max(len(pred_df), 1)
+        return map7
 
 if __name__ == '__main__':
     hf = SamFilter()

@@ -16,8 +16,11 @@ class TestHashFilter(unittest.TestCase):
         df = pd.read_csv(SMALL_DATA_PATH)
         sf = SamFilter(df)
         self.assertGreaterEqual(200, len(sf.customer_usage))
-        self.preds = sf.predict_each_row(df)
-        self.preds.to_csv('submissions/test.csv')
+        preds = sf.predict_each_row(df)
+        vset = sf.make_validation_set(df.tail(50)).to_frame(name='truth')
+        map7 = sf.score(preds, vset)
+        self.assertEqual(map7,0)
+        preds.to_csv('submissions/test.csv')
         self.assertFalse(is_valid_submission('submissions/test.csv'))
 
 
