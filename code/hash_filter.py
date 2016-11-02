@@ -1,6 +1,5 @@
 from __future__ import print_function
 import datetime
-import os
 from collections import defaultdict
 import operator
 import pandas as pd
@@ -58,6 +57,7 @@ class HashFilter(object):
         self.customers = dict()  # customerss we've seen
         self.hash_to_product = defaultdict(lambda: defaultdict(int))
         self.product_counts = defaultdict(int)
+        self.test_path = test_path
 
         # Validation variables
         self.customers_valid = dict()
@@ -181,9 +181,10 @@ class HashFilter(object):
         print('Predicted score: {}'.format(self.map7))
 
     def predict(self, hash, client):
+        '''Find 7 products from a users group that they havent used, if not enough in group use overall counts'''
         product_recommendations = self.hash_to_product.get(hash, []) + self.product_counts
-        predicted = []
         used_products = self.customers.get(client, [])
+        predicted = []
         for product, _ in product_recommendations:
             if len(predicted) == 7:
                 return predicted
@@ -194,6 +195,7 @@ class HashFilter(object):
         return predicted
 
     def generate_submission(self, test_path=None):
+        '''write a csv file with predictions based on data at <test_path>'''
         test_path = test_path or self.test_path
         print('Generate submission...')
         tstamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
@@ -234,3 +236,7 @@ class HashFilter(object):
         print('Empty cases:', str(count_empty))
         out.close()
         f.close()
+
+if __name__ == '__main__':
+    hf = HashFilter()
+    hf.generate_submission()
