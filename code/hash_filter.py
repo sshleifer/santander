@@ -1,9 +1,9 @@
 from __future__ import print_function
-
 import datetime
 import os
 from collections import defaultdict
 import operator
+import pandas as pd
 
 from code.constants import TRAIN_PATH, TEST_PATH, product_names, hash_cols
 
@@ -24,6 +24,12 @@ def apk(actual, predicted, k=7):
         return 0.0
 
     return score / min(len(actual), k)
+
+
+def is_valid_submission(path):
+    df = pd.read_csv(path)
+    df.columns.tolist() == ['ncodpers', 'added_products']
+    df.shape[0] == 929616
 
 
 def reverse_sort(product_counts):
@@ -174,10 +180,24 @@ class HashFilter(object):
         self.map7 /= max(len(self.validation_set), 1)
         print('Predicted score: {}'.format(self.map7))
 
+    def predict(self, hash, client):
+        product_recommendations = self.hash_to_product.get(hash, []) + self.product_counts
+        predicted = []
+        used_products = self.customers.get(client, [])
+        for product, _ in product_recommendations:
+            if len(predicted) == 7:
+                return predicted
+            elif product in predicted or product in used_products:
+                continue
+            else:
+                predicted.append(product)
+        return predicted
+
     def generate_submission(self, test_path=None):
         test_path = test_path or self.test_path
         print('Generate submission...')
-        sub_file = os.path.join('submission_' + str(self.map7) + '_' + str(datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")) + '.csv')
+        tstamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+        sub_file = 'submissions/submission_{}_{}.csv'.format(self.map7, tstamp)
         out = open(sub_file, "w")
         f = open(test_path)
         f.readline()
@@ -196,37 +216,11 @@ class HashFilter(object):
             arr = tmp1[0][:-1].split(",") + [tmp1[1]] + tmp1[2][1:].split(',')
             arr = [a.strip() for a in arr]
             client = arr[1]
-            hash = get_hash(arr)
 
             out.write(client + ',')
-            # If class exists output for class
-            if hash in self.hash_to_product:
-                arr = self.hash_to_product[hash]
-            else:
-                arr = self.product_counts
-                count_empty += 1
 
-            predicted = []
-            for a in arr:
-                # If user is not new
-                if client in self.customers:
-                    if self.customers[client][a[0]] == '1':
-                        continue
-                if a[0] not in predicted:
-                    predicted.append(a[0])
-                    if len(predicted) == 7:
-                        break
-            if len(predicted) < 7:
-                for a in self.product_counts:
-                    # If user is not new
-                    if client in self.customers:
-                        if self.customers[client][a[0]] == '1':
-                            continue
-                    if a[0] not in predicted:
-                        predicted.append(a[0])
-                        if len(predicted) == 7:
-                            break
-
+            hash = get_hash(arr)
+            predicted = self.predict(hash, client)
             for p in predicted:
                 out.write(product_names[p] + ' ')
 
