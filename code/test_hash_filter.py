@@ -18,8 +18,8 @@ class TestHashFilter(unittest.TestCase):
         self.assertGreaterEqual(200, len(sf.customer_usage))
         preds = sf.predict_each_row(df)
         vset = sf.make_validation_set(df.tail(50)).to_frame(name='truth')
-        map7 = sf.score(preds, vset)
-        self.assertEqual(map7,0)
+        map7 = sf.score(preds, vset)  # all products have already been added
+        self.assertEqual(map7, 0)
         preds.to_csv('submissions/test.csv')
         with self.assertRaises(AssertionError):
             is_valid_submission('submissions/test.csv')

@@ -48,6 +48,26 @@ def get_hash(arr):
             ind_empleado, ind_actividad_cliente, indresi)
 
 
+def clean_f(train_path=TRAIN_PATH):
+    lines = []
+    f = open(TRAIN_PATH)
+    f.readline()
+    while 1:
+        line = f.readline()[:-1]
+        if line == '':
+            break
+
+        tmp1 = line.split("\"")
+        arr = tmp1[0][:-1].split(",") + [tmp1[1]] + tmp1[2][1:].split(',')
+        arr = [a.strip() for a in arr]
+        assert len(arr) == 48, 'Error: !!!!{}'.format(line)
+        lines.append(arr)
+        if line == '':
+            break
+    f.close()
+    return lines
+
+
 class HashFilter(object):
 
     last_date = '2016-05-28'
@@ -86,6 +106,7 @@ class HashFilter(object):
             arr = tmp1[0][:-1].split(",") + [tmp1[1]] + tmp1[2][1:].split(',')
             arr = [a.strip() for a in arr]
             assert len(arr) == 48, 'Error: !!!!{}'.format(line)
+
             client = arr[1]
             hash = get_hash(arr)
             part = arr[24:]
@@ -237,11 +258,14 @@ class SamFilter(object):
     '''Collaborative Filtering based on hash_cols'''
     id_col = 'ncodpers'
 
-    def __init__(self, df_train, hash_cols=hash_cols):
+    def __init__(self, df_train, hash_cols=hash_cols, min_cluster_size=2.):
         '''Record customer usage, group usage, '''
         self.customer_usage = df_train.groupby(self.id_col)[product_names].sum()
         self.overall_usage = df_train[product_names].sum().sort_values(ascending=False)
-        self.cluster_usage = df_train.groupby(hash_cols)[product_names].sum()
+        gb = df_train.groupby(hash_cols)
+        too_small = gb.size().loc[lambda x: x < min_cluster_size].index
+
+        self.cluster_usage = gb[product_names].sum().drop(too_small)
         clist = {}
         for k, v in self.cluster_usage.iterrows():
             recs = v[v > 0].sort_values(ascending=False).index
@@ -284,4 +308,3 @@ class SamFilter(object):
 
 if __name__ == '__main__':
     hf = SamFilter()
-    hf.generate_submission()
