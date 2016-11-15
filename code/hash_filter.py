@@ -1,6 +1,7 @@
 from __future__ import print_function
 import datetime
 from collections import defaultdict
+from tqdm import tqdm
 # import numpy as np
 import operator
 import pandas as pd
@@ -260,11 +261,11 @@ class SamFilter(object):
 
     def __init__(self, df_train, hash_cols=hash_cols, min_cluster_size=2.):
         '''Record customer usage, group usage, '''
+        self.hash_cols = hash_cols
         self.customer_usage = df_train.groupby(self.id_col)[product_names].sum()
         self.overall_usage = df_train[product_names].sum().sort_values(ascending=False)
-        gb = df_train.groupby(hash_cols)
+        gb = df_train.groupby(self.hash_cols)
         too_small = gb.size().loc[lambda x: x < min_cluster_size].index
-
         self.cluster_usage = gb[product_names].sum().drop(too_small)
         clist = {}
         for k, v in self.cluster_usage.iterrows():
@@ -285,8 +286,10 @@ class SamFilter(object):
 
     def predict_each_row(self, test_data):
         '''Make a prediction for each row in test_data'''
-        return (pd.Series({v[self.id_col]: ' '.join(self._predict(v)) for k, v in test_data.iterrows()})
-                .rename_axis('ncodpers').rename('added_products'))
+        res = {}
+        for k, v in tqdm(test_data.iterrows()):
+            res[v[self.id_col]] = ' '.join(self._predict(v))
+        return (pd.Series(res).rename_axis('ncodpers').rename('added_products'))
 
     def _apk(self, preds, truth, id):
         pred_list = preds.split()
