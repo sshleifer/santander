@@ -152,7 +152,8 @@ class HashFilter(object):
 
         # Valid
         print(self.hash_to_product_valid)
-        self.hash_to_product_valid = {b: reverse_sort(self.hash_to_product_valid[b]) for b in self.hash_to_product_valid}
+        self.hash_to_product_valid = {b: reverse_sort(self.hash_to_product_valid[b]) for b in self.hash_to_product_valid
+                                      if len(self.hash_to_product_valid[b]) > 1}
         self.product_counts_valid = reverse_sort(self.product_counts_valid)
 
     def validation(self):
@@ -216,7 +217,7 @@ class HashFilter(object):
         f.readline()
         n_lines = 0
         count_empty = 0
-        out.write("client,added_products\n")
+        out.write("ncodpers,added_products\n")
 
         while 1:
             line = f.readline()[:-1]
@@ -310,4 +311,5 @@ class SamFilter(object):
         return map7
 
 if __name__ == '__main__':
-    hf = SamFilter()
+    hf = HashFilter()
+    hf.generate_submission()
