@@ -1,36 +1,11 @@
 from __future__ import print_function
 import datetime
 from collections import defaultdict
-from tqdm import tqdm
 # import numpy as np
 import operator
 import pandas as pd
 
-from code.constants import TRAIN_PATH, TEST_PATH, product_names, hash_cols
-
-
-def apk(actual, predicted, k=7):
-    if len(predicted) > k:
-        predicted = predicted[:k]
-
-    score = 0.0
-    num_hits = 0.0
-    if not actual:
-        return 0.0
-
-    for i, p in enumerate(predicted):
-        if p in actual and p not in predicted[:i]:
-            num_hits += 1.0
-            score += num_hits / (i + 1.0)
-
-    return score / min(len(actual), k)
-
-
-def is_valid_submission(path):
-    df = pd.read_csv(path)
-    assert df.columns.tolist() == ['ncodpers', 'added_products']
-    assert df.shape[0] == 929615
-    return True
+from code.constants import TRAIN_PATH, TEST_PATH, product_names
 
 
 def reverse_sort(product_counts):
@@ -256,61 +231,6 @@ def take_7(cluster_recs, overall_recs):
     need = 7 - len(chosen)
     return chosen.append(overall_recs.drop(chosen).index[:need])
 
-
-class SamFilter(object):
-    '''Collaborative Filtering based on hash_cols'''
-    id_col = 'ncodpers'
-
-    def __init__(self, df_train, hash_cols=hash_cols, min_cluster_size=2.):
-        '''Record customer usage, group usage, '''
-        self.hash_cols = hash_cols
-        self.customer_usage = (df_train[df_train.fecha_dato == df_train.fecha_dato.max()]
-                               .groupby(self.id_col)[product_names].sum())
-        self.overall_usage = df_train[product_names].sum().sort_values(ascending=False)
-        gb = df_train.groupby(self.hash_cols)
-        too_small = gb.size().loc[lambda x: x < min_cluster_size].index
-        self.cluster_usage = gb[product_names].sum().drop(too_small)
-        clist = {}
-        for k, v in self.cluster_usage.iterrows():
-            recs = v[v > 0].sort_values(ascending=False).index
-            clist[k] = recs.append(self.overall_usage.index.drop(recs))
-        self.clist = clist
-
-    def _predict(self, row):
-        '''Find non-used products that were popular in the cluster'''
-        id, cluster_id = row[self.id_col], tuple(row[hash_cols].values)
-        start = self.clist.get(cluster_id, self.overall_usage.index)
-        if id in self.customer_usage.index:
-            used_products = self.customer_usage.loc[row[self.id_col]].loc[lambda x: x > 0].index
-        else:
-            return start[:7]
-            used_products = pd.Index([])
-        return start.drop(used_products)[:7]
-
-    def predict_each_row(self, test_data):
-        '''Make a prediction for each row in test_data'''
-        res = {}
-        for k, v in tqdm(test_data.iterrows()):
-            res[v[self.id_col]] = ' '.join(self._predict(v))
-        return (pd.Series(res).rename_axis('ncodpers').rename('added_products'))
-
-    def _apk(self, preds, truth, id):
-        pred_list = preds.split()
-        used_products = self.customer_usage.loc[id].loc[lambda x: x > 0].index
-        truth = truth.drop(used_products, errors='ignore')
-        return apk(pred_list, truth.tolist())
-
-    def make_validation_set(self, df):
-        truth = (df.groupby('ncodpers')[product_names].sum())
-        return pd.Series({code: row[row > 0].index for code, row in truth.iterrows()})
-
-    def score(self, pred_df, truth_df):
-        map7 = 0
-        jnd = pred_df.to_frame(name='added_products').join(truth_df).dropna()
-        for i, v in jnd.iterrows():
-            map7 += self._apk(v['added_products'], v['truth'], i)
-        map7 /= max(len(pred_df), 1)
-        return map7
 
 if __name__ == '__main__':
     hf = HashFilter()

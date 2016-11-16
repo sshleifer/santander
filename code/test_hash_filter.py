@@ -1,7 +1,9 @@
 import pandas as pd
 import unittest
 
-from code.hash_filter import HashFilter, is_valid_submission, SamFilter
+from code.helpers import is_valid_submission
+from code.sam_filter import SamFilter
+from code.hash_filter import HashFilter
 from code.constants import SMALL_DATA_PATH
 
 
