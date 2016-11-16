@@ -1,4 +1,5 @@
 ##TODO
+0. Multiple things broken in terms of replication, may need to restart
 1. aggregations/his_cleaning.pkl
 2. Check predict returning too few rows
 3. Check discrepancy between hashes on small N

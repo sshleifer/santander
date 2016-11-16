@@ -32,6 +32,7 @@ def is_valid_submission(path):
     assert df.shape[0] == 929615
     return True
 
+
 def reverse_sort(product_counts):
     return sorted(product_counts.items(), key=operator.itemgetter(1), reverse=True)
 
@@ -147,11 +148,11 @@ class HashFilter(object):
         print('Hashes num: ', len(self.hash_to_product))
         print('Valid part: ', len(self.validation_set))
 
-        self.hash_to_product = {b: reverse_sort(self.hash_to_product[b]) for b, v in self.hash_to_product.items()}
+        self.hash_to_product = {b: reverse_sort(self.hash_to_product[b]) for b, v in self.hash_to_product.items()
+                                if len(self.hash_to_product[b]) > 1}
         self.product_counts = reverse_sort(self.product_counts)
 
         # Valid
-        print(self.hash_to_product_valid)
         self.hash_to_product_valid = {b: reverse_sort(self.hash_to_product_valid[b]) for b in self.hash_to_product_valid
                                       if len(self.hash_to_product_valid[b]) > 1}
         self.product_counts_valid = reverse_sort(self.product_counts_valid)
@@ -242,7 +243,7 @@ class HashFilter(object):
                 print('Read {} lines ...'.format(n_lines))
                 # break
 
-        out.write("\n")
+            out.write("\n")
 
         print('Total cases:', str(n_lines))
         print('Empty cases:', str(count_empty))
@@ -263,7 +264,8 @@ class SamFilter(object):
     def __init__(self, df_train, hash_cols=hash_cols, min_cluster_size=2.):
         '''Record customer usage, group usage, '''
         self.hash_cols = hash_cols
-        self.customer_usage = df_train.groupby(self.id_col)[product_names].sum()
+        self.customer_usage = (df_train[df_train.fecha_dato == df_train.fecha_dato.max()]
+                               .groupby(self.id_col)[product_names].sum())
         self.overall_usage = df_train[product_names].sum().sort_values(ascending=False)
         gb = df_train.groupby(self.hash_cols)
         too_small = gb.size().loc[lambda x: x < min_cluster_size].index
