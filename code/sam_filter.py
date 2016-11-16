@@ -1,10 +1,26 @@
 from __future__ import print_function
+import datetime
 # import numpy as np
 import pandas as pd
 
-from code.constants import TRAIN_PATH, TEST_PATH, product_names, hash_cols
+from code.constants import product_names, hash_cols
 from code.helpers import apk
 from tqdm import tqdm
+
+
+DTYPES = {'age': str,
+          'antiguedad': str,
+          'conyuemp': str,
+          'ind_actividad_cliente': str,
+          'ind_empleado': str,
+          'ind_nuevo': str,
+          'indrel_1mes': str,
+          'indresi': str,
+          'pais_residencia': str,
+          'segmento': str,
+          'sexo': str}
+
+TA2 = pd.read_pickle('inputs/valid_products.pkl')
 
 
 class SamFilter(object):
@@ -61,3 +77,19 @@ class SamFilter(object):
             map7 += self._apk(v['added_products'], v['truth'], i)
         map7 /= max(len(pred_df), 1)
         return map7
+
+    def pos_success_score(sf, df_valid):
+        preds = sf.predict_each_row(df_valid)
+        pred_df = preds.apply(lambda x: x.split()).apply(pd.Series).rename_axis('product', 1).stack()
+        p2 = pred_df.reset_index('product', drop=True).to_frame(name='product').assign(predicted=1).reset_index()
+        ncods = p2.ncodpers.unique()
+        return TA2[TA2.ncodpers.isin(ncods)].merge(p2, how='left').predicted.fillna(0).mean()
+
+if __name__ == '__main__':
+    df = pd.read_csv('inputs/my_train.csv', dtype=DTYPES)
+    df_test = pd.read_pickle('inputs/test_df.pkl')
+    sf = SamFilter(df)
+    tstamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
+    preds = sf.predict_each_row(df_test)
+    sub_file = 'submissions/sam_{}.csv'.format(tstamp)
+    preds.to_csv(sub_file)
