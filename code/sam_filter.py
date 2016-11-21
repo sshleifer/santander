@@ -1,6 +1,6 @@
 from __future__ import print_function
 import datetime
-# import numpy as np
+import numpy as np
 import pandas as pd
 
 from code.constants import product_names, hash_cols
@@ -21,13 +21,15 @@ DTYPES = {'age': str,
           'sexo': str}
 
 TA2 = pd.read_pickle('inputs/valid_products.pkl')
+SECOND_TO_LAST_DATE = '2016-04-28'
+nprods = 24
 
 
 class SamFilter(object):
     '''Collaborative Filtering based on hash_cols'''
     id_col = 'ncodpers'
 
-    def __init__(self, df_train, hash_cols=hash_cols, min_cluster_size=2.):
+    def __init__(self, df_train, hash_cols=hash_cols, min_cluster_size=2., max_train_date=None):
         '''Record customer usage, group usage, '''
         self.hash_cols = hash_cols
         self.customer_usage = (df_train[df_train.fecha_dato == df_train.fecha_dato.max()]
@@ -36,28 +38,53 @@ class SamFilter(object):
         gb = df_train.groupby(self.hash_cols)
         too_small = gb.size().loc[lambda x: x < min_cluster_size].index
         self.cluster_usage = gb[product_names].sum().drop(too_small)
-        clist = {}
-        for k, v in self.cluster_usage.iterrows():
-            recs = v[v > 0].sort_values(ascending=False).index
-            clist[k] = recs.append(self.overall_usage.index.drop(recs))
-        self.clist = clist
+        self.cldf = self.cluster_usage.reset_index().reset_index().rename(columns={'index': 'cluster'}).assign(cluster=lambda x: x.cluster.astype(str))
 
-    def _predict(self, row):
-        '''Find non-used products that were popular in the cluster'''
-        id, cluster_id = row[self.id_col], tuple(row[hash_cols].values)
-        start = self.clist.get(cluster_id, self.overall_usage.index)
-        if id in self.customer_usage.index:
-            used_products = self.customer_usage.loc[row[self.id_col]].loc[lambda x: x > 0].index
-        else:
-            return start[:7]
-            used_products = pd.Index([])
-        return start.drop(used_products)[:7]
+        self.turbo = pd.read_csv('submissions/submission_turbo.csv')
+        self.fit(df_train, max_train_date=max_train_date)
+
+    def fit(self, tr_df, max_train_date):
+        if max_train_date is not None:
+            tr_df = df[df.fecha_dato < max_train_date]
+        self.usage_df = self._build_usage_df(tr_df)
+        self.recommendations = self.filter_to_top7(self.usage_df, tr_df)
+
+    def _build_usage_df(self, df_tr_last_day):
+        hash_map = df_tr_last_day.set_index('ncodpers')[hash_cols]
+        cl2 = hash_map.reset_index().merge(self.cldf, how='left').set_index('ncodpers')
+        clmt = (cl2.set_index('cluster', append=True)[product_names]
+                .rename_axis('product', 1).stack().to_frame(name='cluster_usage'))
+        overall_usage_df = self.overall_usage.rename_axis('product').to_frame(name='overall_usage')
+        return (
+            self.customer_usage.rename_axis('product', 1).stack().to_frame(name='usage').reset_index()
+            .merge(clmt.reset_index(), how='left')
+            .merge(overall_usage_df.reset_index(), on='product', how='left')
+        )
+
+    def filter_to_top7(self, usage_df, df_tr_last_day):
+        id = self.id_col
+        ncods = df_tr_last_day[id].nunique()
+        poss_df = df_tr_last_day.set_index(id)[product_names].rename_axis('product', 1).stack().to_frame(name='used_last').reset_index()
+        scale_factor = usage_df.overall_usage.min() + .1
+        usage_df['score'] = (usage_df.cluster_usage.fillna(0) * scale_factor) + usage_df.overall_usage
+        sf2 = usage_df.score.max() + 1
+        usage_df['score'] = usage_df['score'] - (sf2 * np.clip(usage_df.usage, 0, 1))
+        assert usage_df.score.notnull().all()
+        assert ncods * poss_df['product'].nunique() == len(poss_df)
+        ucand = usage_df.sort_values([id, 'score'], ascending=False)
+        indices = [x for x in range(len(ucand)) if x % nprods <= 6]
+        return ucand.iloc[indices]
 
     def predict_each_row(self, test_data):
         '''Make a prediction for each row in test_data'''
+        gb = self.recommendations.groupby('ncodpers')
         res = {}
-        for k, v in tqdm(test_data.iterrows()):
-            res[v[self.id_col]] = ' '.join(self._predict(v))
+        for k, v in tqdm(test_data.set_index(self.id_col).iterrows()):
+            try:
+                grp = gb.get_group(k)
+                res[k] = ' '.join(grp['product'].values)
+            except KeyError:
+                res[k] = self.turbo.loc[k, 'added_products']
         return (pd.Series(res).rename_axis('ncodpers').rename('added_products'))
 
     def _apk(self, preds, truth, id):
@@ -78,8 +105,8 @@ class SamFilter(object):
         map7 /= max(len(pred_df), 1)
         return map7
 
-    def pos_success_score(sf, df_valid):
-        preds = sf.predict_each_row(df_valid)
+    def pos_success_score(self, df_valid):
+        preds = self.predict_each_row(df_valid)
         pred_df = preds.apply(lambda x: x.split()).apply(pd.Series).rename_axis('product', 1).stack()
         p2 = pred_df.reset_index('product', drop=True).to_frame(name='product').assign(predicted=1).reset_index()
         ncods = p2.ncodpers.unique()
@@ -88,8 +115,8 @@ class SamFilter(object):
 if __name__ == '__main__':
     df = pd.read_csv('inputs/my_train.csv', dtype=DTYPES)
     df_test = pd.read_pickle('inputs/test_df.pkl')
-    sf = SamFilter(df)
+    self = SamFilter(df)
     tstamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
-    preds = sf.predict_each_row(df_test)
+    preds = self.predict_each_row(df_test)
     sub_file = 'submissions/sam_{}.csv'.format(tstamp)
     preds.to_csv(sub_file)
