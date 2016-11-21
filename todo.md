@@ -1,8 +1,11 @@
 ##TODO
-0. Multiple things broken in terms of replication, may need to restart
-1. aggregations/his_cleaning.pkl
-2. Check predict returning too few rows
-3. Check discrepancy between hashes on small N
-4. Check website for other algo ideas
-5. Vectorize renta with qcut
-6. Date similarity
+
+LAND New predict functionality for in sample
+
+Multiple things broken in terms of replication, may need to restart
+aggregations/his_cleaning.pkl
+Check predict returning too few rows
+Check discrepancy between hashes on small N
+Check website for other algo ideas
+Vectorize renta with qcut
+Date similarity
