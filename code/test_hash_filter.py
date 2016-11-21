@@ -19,15 +19,15 @@ class TestHashFilter(unittest.TestCase):
         sf = SamFilter(df)
         self.assertGreaterEqual(200, len(sf.customer_usage))
         preds = sf.predict_each_row(df)
+        self.assertEqual(sf.recommendations.usage.max(), 0)
         vset = sf.make_validation_set(df.tail(50)).to_frame(name='truth')
         map7 = sf.score(preds, vset)  # all products have already been added
+        pos_rate = sf.pos_success_score(df)
+        self.assertEqual(pos_rate, .375)
         self.assertEqual(map7, 0)
         preds.to_csv('submissions/test.csv')
         with self.assertRaises(AssertionError):
             is_valid_submission('submissions/test.csv')
 
-
     def test_that_hash_cols_are_fixed(self):
-        # df=store['df_train']
-        # df.
         pass

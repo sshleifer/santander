@@ -105,7 +105,7 @@ class SamFilter(object):
         map7 /= max(len(pred_df), 1)
         return map7
 
-    def pos_success_score(self, df_valid):
+    def pos_success_score(self, df_valid, use_ta2=False):
         preds = self.predict_each_row(df_valid)
         pred_df = preds.apply(lambda x: x.split()).apply(pd.Series).rename_axis('product', 1).stack()
         p2 = pred_df.reset_index('product', drop=True).to_frame(name='product').assign(predicted=1).reset_index()
