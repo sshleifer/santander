@@ -40,14 +40,16 @@ class SamFilter(object):
         self.cluster_usage = gb[product_names].sum().drop(too_small)
         self.cldf = self.cluster_usage.reset_index().reset_index().rename(columns={'index': 'cluster'}).assign(cluster=lambda x: x.cluster.astype(str))
 
-        self.turbo = pd.read_csv('submissions/submission_turbo.csv')
-        self.fit(df_train, max_train_date=max_train_date)
+        self.turbo = pd.read_csv('submissions/submission_turbo.csv').set_index('ncodpers')
+        self.recommendations = self.fit(df_train, max_train_date=max_train_date)
 
     def fit(self, tr_df, max_train_date):
         if max_train_date is not None:
             tr_df = df[df.fecha_dato < max_train_date]
-        self.usage_df = self._build_usage_df(tr_df)
-        self.recommendations = self.filter_to_top7(self.usage_df, tr_df)
+        usage_df = self._build_usage_df(tr_df)
+        print('Filtering usage_df to top 7')
+        return self.filter_to_top7(usage_df, tr_df)
+
 
     def _build_usage_df(self, df_tr_last_day):
         hash_map = df_tr_last_day.set_index('ncodpers')[hash_cols]
@@ -115,8 +117,8 @@ class SamFilter(object):
 if __name__ == '__main__':
     df = pd.read_csv('inputs/my_train.csv', dtype=DTYPES)
     df_test = pd.read_pickle('inputs/test_df.pkl')
-    self = SamFilter(df)
+    sf = SamFilter(df)
     tstamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
-    preds = self.predict_each_row(df_test)
+    preds = sf.predict_each_row(df_test)
     sub_file = 'submissions/sam_{}.csv'.format(tstamp)
     preds.to_csv(sub_file)
