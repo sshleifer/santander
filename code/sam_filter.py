@@ -105,11 +105,11 @@ class SamFilter(object):
         return TA2[TA2.ncodpers.isin(ncods)].merge(p2, how='left').predicted.fillna(0).mean()
 
 if __name__ == '__main__':
-    df = pd.read_csv('inputs/my_train.csv', dtype=DTYPES, nrows=200)
+    df = pd.read_csv('inputs/my_train.csv', dtype=DTYPES)
     sf = SamFilter(df)
     del df
     tstamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M")
     df_test = pd.read_pickle('inputs/test_df.pkl')
     sub_file = 'submissions/sam_{}.csv'.format(tstamp)
-    preds = sf.predict_each_row(df_test.head(200))
+    preds = sf.predict_each_row(df_test)
     preds.to_csv(sub_file)
