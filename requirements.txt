@@ -131,7 +131,7 @@ progressbar==2.3
 prompt-toolkit==1.0.7
 prospector==0.12
 protobuf==2.6.1
-psutil==4.3.1
+psutil==5.6.6
 psycopg2==2.6.1
 ptyprocess==0.5.1
 py==1.4.31
