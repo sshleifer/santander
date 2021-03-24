@@ -172,7 +172,7 @@ requirements-detector==0.5.1
 retry-decorator==1.0.0
 roman==2.0.0
 rpy2==2.8.0
-rsa==3.2
+rsa==4.1
 s3transfer==0.1.9
 schwifty==1.1.1
 scikit-learn==0.17
