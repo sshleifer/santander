@@ -161,7 +161,7 @@ python-dateutil==2.6.0
 python-etcd==0.4.3
 python-gitlab==0.15.1
 pytz==2016.7
-PyYAML==3.10
+PyYAML==5.4
 pyzmq==15.4.0
 qtconsole==4.2.1
 Quandl==3.0.0
