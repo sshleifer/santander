@@ -142,7 +142,7 @@ pycparser==2.14
 pycurl==7.43.0
 pydocstyle==1.0.0
 pyflakes==1.0.0
-Pygments==2.1.3
+Pygments==2.7.4
 pykalman==0.9.5
 pylint-celery==0.3
 pylint-common==0.2.2
