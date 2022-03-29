@@ -113,7 +113,7 @@ oauth2client==1.5.1
 openpyxl==2.3.5
 pam==0.1.4
 pandas==0.19.1
-paramiko==2.0.0
+paramiko==2.10.1
 path.py==7.7.1
 pathlib2==2.1.0
 patsy==0.4.0
